@@ -14,12 +14,14 @@
 package io.prestosql.plugin.hive.metastore;
 
 import io.airlift.configuration.Config;
+import io.airlift.configuration.ConfigDescription;
 
 import javax.validation.constraints.NotNull;
 
 public class MetastoreConfig
 {
     private String metastoreType = "thrift";
+    private boolean hideDeltaLakeTables;
 
     @NotNull
     public String getMetastoreType()
@@ -31,6 +33,19 @@ public class MetastoreConfig
     public MetastoreConfig setMetastoreType(String metastoreType)
     {
         this.metastoreType = metastoreType;
+        return this;
+    }
+
+    public boolean isHideDeltaLakeTables()
+    {
+        return hideDeltaLakeTables;
+    }
+
+    @Config("hive.hide-delta-tables")
+    @ConfigDescription("Hide Delta Lake tables in table listings")
+    public MetastoreConfig setHideDeltaLakeTables(boolean hideDeltaLakeTables)
+    {
+        this.hideDeltaLakeTables = hideDeltaLakeTables;
         return this;
     }
 }

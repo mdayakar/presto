@@ -184,6 +184,7 @@ import static io.prestosql.plugin.hive.HiveTableProperties.PARTITIONED_BY_PROPER
 import static io.prestosql.plugin.hive.HiveTableProperties.SKIP_FOOTER_LINE_COUNT;
 import static io.prestosql.plugin.hive.HiveTableProperties.SKIP_HEADER_LINE_COUNT;
 import static io.prestosql.plugin.hive.HiveTableProperties.SORTED_BY_PROPERTY;
+import static io.prestosql.plugin.hive.HiveTableProperties.SPARK_TABLE_PROVIDER;
 import static io.prestosql.plugin.hive.HiveTableProperties.STORAGE_FORMAT_PROPERTY;
 import static io.prestosql.plugin.hive.HiveTableProperties.TEXTFILE_FIELD_SEPARATOR;
 import static io.prestosql.plugin.hive.HiveTableProperties.TEXTFILE_FIELD_SEPARATOR_ESCAPE;
@@ -199,6 +200,7 @@ import static io.prestosql.plugin.hive.HiveTableProperties.getOrcBloomFilterColu
 import static io.prestosql.plugin.hive.HiveTableProperties.getOrcBloomFilterFpp;
 import static io.prestosql.plugin.hive.HiveTableProperties.getPartitionedBy;
 import static io.prestosql.plugin.hive.HiveTableProperties.getSingleCharacterProperty;
+import static io.prestosql.plugin.hive.HiveTableProperties.getSparkTableProvider;
 import static io.prestosql.plugin.hive.HiveTableProperties.isTransactional;
 import static io.prestosql.plugin.hive.HiveType.HIVE_STRING;
 import static io.prestosql.plugin.hive.HiveType.toHiveType;
@@ -298,6 +300,7 @@ public class HiveMetadata
     private final boolean writesToNonManagedTablesEnabled;
     private final boolean createsOfNonManagedTablesEnabled;
     private final boolean translateHiveViews;
+    private final boolean hideDeltaLakeTables;
     private final String prestoVersion;
     private final HiveStatisticsProvider hiveStatisticsProvider;
     private final AccessControlMetadata accessControlMetadata;
@@ -310,6 +313,7 @@ public class HiveMetadata
             boolean writesToNonManagedTablesEnabled,
             boolean createsOfNonManagedTablesEnabled,
             boolean translateHiveViews,
+            boolean hideDeltaLakeTables,
             TypeManager typeManager,
             LocationService locationService,
             JsonCodec<PartitionUpdate> partitionUpdateCodec,
@@ -327,6 +331,7 @@ public class HiveMetadata
         this.writesToNonManagedTablesEnabled = writesToNonManagedTablesEnabled;
         this.createsOfNonManagedTablesEnabled = createsOfNonManagedTablesEnabled;
         this.translateHiveViews = translateHiveViews;
+        this.hideDeltaLakeTables = hideDeltaLakeTables;
         this.prestoVersion = requireNonNull(prestoVersion, "prestoVersion is null");
         this.hiveStatisticsProvider = requireNonNull(hiveStatisticsProvider, "hiveStatisticsProvider is null");
         this.accessControlMetadata = requireNonNull(accessControlMetadata, "accessControlMetadata is null");
@@ -629,6 +634,10 @@ public class HiveMetadata
         getCsvSerdeProperty(table, CSV_ESCAPE_KEY)
                 .ifPresent(csvEscape -> properties.put(CSV_ESCAPE, csvEscape));
 
+        // Spark specific properties
+        Optional.ofNullable(table.getParameters().get(SPARK_TABLE_PROVIDER_KEY))
+                .ifPresent(provider -> properties.put(SPARK_TABLE_PROVIDER, provider));
+
         Optional<String> comment = Optional.ofNullable(table.getParameters().get(TABLE_COMMENT));
 
         return new ConnectorTableMetadata(tableName, columns.build(), properties.build(), comment);
@@ -748,15 +757,19 @@ public class HiveMetadata
         if (!filterSchema(tableName.getSchemaName())) {
             return ImmutableList.of();
         }
+
+        Optional<Table> optionalTable;
         try {
-            if (metastore.getTable(new HiveIdentity(session), tableName.getSchemaName(), tableName.getTableName()).isEmpty()) {
-                return ImmutableList.of();
-            }
+            optionalTable = metastore.getTable(new HiveIdentity(session), tableName.getSchemaName(), tableName.getTableName());
         }
         catch (HiveViewNotSupportedException e) {
             // exists, would be returned by listTables from schema
+            return ImmutableList.of(tableName);
         }
-        return ImmutableList.of(tableName);
+        return optionalTable
+                .filter(table -> !hideDeltaLakeTables || !isDeltaLakeTable(table))
+                .map(table -> ImmutableList.of(tableName))
+                .orElseGet(ImmutableList::of);
     }
 
     /**
@@ -973,6 +986,9 @@ public class HiveMetadata
                     checkFormatForProperty(hiveStorageFormat, HiveStorageFormat.CSV, CSV_SEPARATOR);
                     tableProperties.put(CSV_SEPARATOR_KEY, separator.toString());
                 });
+
+        // Spark specific properties
+        getSparkTableProvider(tableMetadata.getProperties()).ifPresent(provider -> tableProperties.put(SPARK_TABLE_PROVIDER_KEY, provider));
 
         // Set bogus table stats to prevent Hive 2.x from gathering these stats at table creation.
         // These stats are not useful by themselves and can take very long time to collect when creating an

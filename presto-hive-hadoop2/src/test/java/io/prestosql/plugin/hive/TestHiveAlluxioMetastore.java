@@ -153,6 +153,13 @@ public class TestHiveAlluxioMetastore
     }
 
     @Override
+    public void testHideDeltaLakeTables()
+    {
+        // Alluxio metastore does not support create operations
+        throw new SkipException("not supported");
+    }
+
+    @Override
     public void testIllegalStorageFormatDuringTableScan()
     {
         // Alluxio metastore does not support create operations

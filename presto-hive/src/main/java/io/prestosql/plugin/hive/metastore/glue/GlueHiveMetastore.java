@@ -122,6 +122,8 @@ import static com.google.common.collect.Comparators.lexicographical;
 import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static io.prestosql.plugin.hive.HiveErrorCode.HIVE_METASTORE_ERROR;
 import static io.prestosql.plugin.hive.HiveErrorCode.HIVE_PARTITION_DROPPED_DURING_QUERY;
+import static io.prestosql.plugin.hive.HiveMetadata.DELTA_LAKE_PROVIDER;
+import static io.prestosql.plugin.hive.HiveMetadata.SPARK_TABLE_PROVIDER_KEY;
 import static io.prestosql.plugin.hive.aws.AwsCurrentRegionHolder.getCurrentRegionFromEC2Metadata;
 import static io.prestosql.plugin.hive.metastore.MetastoreUtil.makePartitionName;
 import static io.prestosql.plugin.hive.metastore.MetastoreUtil.verifyCanDropColumn;
@@ -163,6 +165,7 @@ public class GlueHiveMetastore
     private final GlueMetastoreStats stats = new GlueMetastoreStats();
     private final GlueColumnStatisticsProvider columnStatisticsProvider;
     private final boolean assumeCanonicalPartitionKeys;
+    private final boolean hideDeltaLakeTables;
 
     @Inject
     public GlueHiveMetastore(
@@ -184,6 +187,7 @@ public class GlueHiveMetastore
         this.executor = requireNonNull(executor, "executor is null");
         this.columnStatisticsProvider = requireNonNull(columnStatisticsProvider, "columnStatisticsProvider is null");
         this.assumeCanonicalPartitionKeys = glueConfig.isAssumeCanonicalPartitionKeys();
+        this.hideDeltaLakeTables = metastoreConfig.isHideDeltaLakeTables();
     }
 
     private static AWSGlueAsync createAsyncGlueClient(GlueHiveMetastoreConfig config, Optional<RequestHandler2> requestHandler)
@@ -406,7 +410,11 @@ public class GlueHiveMetastore
                             .withCatalogId(catalogId)
                             .withDatabaseName(databaseName)
                             .withNextToken(nextToken));
-                    result.getTableList().forEach(table -> tableNames.add(table.getName()));
+                    result.getTableList().stream()
+                            .filter(hideDeltaLakeTables
+                                    ? table -> !table.getParameters().getOrDefault(SPARK_TABLE_PROVIDER_KEY, "").equalsIgnoreCase(DELTA_LAKE_PROVIDER)
+                                    : table -> true)
+                            .forEach(table -> tableNames.add(table.getName()));
                     nextToken = result.getNextToken();
                 }
                 while (nextToken != null);

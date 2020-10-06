@@ -192,6 +192,7 @@ public abstract class AbstractTestHiveFileSystem
         metadataFactory = new HiveMetadataFactory(
                 new CatalogName("hive"),
                 config,
+                new MetastoreConfig(),
                 metastoreClient,
                 hdfsEnvironment,
                 hivePartitionManager,

@@ -135,7 +135,8 @@ public class TestHiveGlueMetastore
         Executor executor = new BoundedExecutor(this.executor, 10);
         return new GlueHiveMetastore(
                 HDFS_ENVIRONMENT,
-                new MetastoreConfig(),
+                new MetastoreConfig()
+                        .setHideDeltaLakeTables(true),
                 glueConfig,
                 new DisabledGlueColumnStatisticsProvider(),
                 executor,

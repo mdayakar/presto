@@ -227,6 +227,7 @@ public class ThriftHiveMetastore
         requireNonNull(hiveConfig, "hiveConfig is null");
         this.translateHiveViews = hiveConfig.isTranslateHiveViews();
         requireNonNull(metastoreConfig, "metastoreConfig is null");
+        checkArgument(!metastoreConfig.isHideDeltaLakeTables(), "Hiding delta tables is not supported"); // TODO
         this.maxWaitForLock = thriftConfig.getMaxWaitForTransactionLock();
         this.authenticationEnabled = authenticationEnabled;
 

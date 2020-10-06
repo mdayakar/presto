@@ -65,6 +65,8 @@ public class HiveTableProperties
     public static final String TEXTFILE_FIELD_SEPARATOR = "textfile_field_separator";
     public static final String TEXTFILE_FIELD_SEPARATOR_ESCAPE = "textfile_field_separator_escape";
     public static final String NULL_FORMAT_PROPERTY = "null_format";
+    // for tests, TODO (https://github.com/prestosql/presto/issues/5426) remove
+    public static final String SPARK_TABLE_PROVIDER = "spark_sql_sources_provider";
     public static final String SKIP_HEADER_LINE_COUNT = "skip_header_line_count";
     public static final String SKIP_FOOTER_LINE_COUNT = "skip_footer_line_count";
     public static final String CSV_SEPARATOR = "csv_separator";
@@ -153,6 +155,7 @@ public class HiveTableProperties
                 stringProperty(TEXTFILE_FIELD_SEPARATOR, "TEXTFILE field separator character", null, false),
                 stringProperty(TEXTFILE_FIELD_SEPARATOR_ESCAPE, "TEXTFILE field separator escape character", null, false),
                 stringProperty(NULL_FORMAT_PROPERTY, "Serialization format for NULL value", null, false),
+                stringProperty(SPARK_TABLE_PROVIDER, "Internal Hive connector property", null, true),
                 stringProperty(CSV_SEPARATOR, "CSV separator character", null, false),
                 stringProperty(CSV_QUOTE, "CSV quote character", null, false),
                 stringProperty(CSV_ESCAPE, "CSV escape character", null, false),
@@ -187,6 +190,11 @@ public class HiveTableProperties
     public static Optional<String> getNullFormat(Map<String, Object> tableProperties)
     {
         return Optional.ofNullable((String) tableProperties.get(NULL_FORMAT_PROPERTY));
+    }
+
+    public static Optional<String> getSparkTableProvider(Map<String, Object> tableProperties)
+    {
+        return Optional.ofNullable((String) tableProperties.get(SPARK_TABLE_PROVIDER));
     }
 
     public static HiveStorageFormat getHiveStorageFormat(Map<String, Object> tableProperties)

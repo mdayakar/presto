@@ -17,8 +17,11 @@ import io.prestosql.plugin.hive.metastore.HiveMetastore;
 import io.prestosql.plugin.hive.metastore.thrift.BridgingHiveMetastore;
 import io.prestosql.plugin.hive.metastore.thrift.InMemoryThriftMetastore;
 import io.prestosql.plugin.hive.metastore.thrift.ThriftMetastoreConfig;
+import org.testng.SkipException;
 
 import java.io.File;
+
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class TestHiveInMemoryMetastore
         extends AbstractTestHiveLocal
@@ -42,5 +45,19 @@ public class TestHiveInMemoryMetastore
     public void testTransactionDeleteInsert()
     {
         // InMemoryHiveMetastore does not check whether partition exist in createPartition and dropPartition
+    }
+
+    @Override
+    public void testHideDeltaLakeTables()
+    {
+        assertThatThrownBy(super::testHideDeltaLakeTables)
+                .hasMessageMatching("(?s)\n" +
+                        "Expecting\n" +
+                        " <\\[.*\\b(\\w+.tmp_presto_test_presto_delta_lake_table_\\w+)\\b.*]>\n" +
+                        "not to contain\n" +
+                        " <\\[\\1]>\n" +
+                        "but found.*");
+
+        throw new SkipException("not supported");
     }
 }

@@ -85,6 +85,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
@@ -93,6 +94,8 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static io.prestosql.plugin.hive.HiveErrorCode.HIVE_METASTORE_ERROR;
+import static io.prestosql.plugin.hive.HiveMetadata.DELTA_LAKE_PROVIDER;
+import static io.prestosql.plugin.hive.HiveMetadata.SPARK_TABLE_PROVIDER_KEY;
 import static io.prestosql.plugin.hive.HiveMetadata.TABLE_COMMENT;
 import static io.prestosql.plugin.hive.HivePartitionManager.extractPartitionValues;
 import static io.prestosql.plugin.hive.metastore.HivePrivilegeInfo.HivePrivilege.OWNERSHIP;
@@ -132,6 +135,7 @@ public class FileHiveMetastore
     private final Path catalogDirectory;
     private final HdfsContext hdfsContext;
     private final boolean assumeCanonicalPartitionKeys;
+    private final boolean hideDeltaLakeTables;
     private final FileSystem metadataFileSystem;
 
     private final JsonCodec<DatabaseMetadata> databaseCodec = JsonCodec.jsonCodec(DatabaseMetadata.class);
@@ -164,6 +168,7 @@ public class FileHiveMetastore
         this.catalogDirectory = new Path(requireNonNull(config.getCatalogDirectory(), "catalogDirectory is null"));
         this.hdfsContext = new HdfsContext(ConnectorIdentity.ofUser(config.getMetastoreUser()));
         this.assumeCanonicalPartitionKeys = config.isAssumeCanonicalPartitionKeys();
+        this.hideDeltaLakeTables = metastoreConfig.isHideDeltaLakeTables();
         try {
             metadataFileSystem = hdfsEnvironment.getFileSystem(hdfsContext, this.catalogDirectory);
         }
@@ -411,18 +416,11 @@ public class FileHiveMetastore
     @Override
     public synchronized List<String> getAllTables(String databaseName)
     {
-        requireNonNull(databaseName, "databaseName is null");
-
-        Optional<Database> database = getDatabase(databaseName);
-        if (database.isEmpty()) {
-            return ImmutableList.of();
-        }
-
-        Path databaseMetadataDirectory = getDatabaseMetadataDirectory(databaseName);
-        List<String> tables = getChildSchemaDirectories(databaseMetadataDirectory).stream()
-                .map(Path::getName)
+        return listAllTables(databaseName).stream()
+                .filter(hideDeltaLakeTables
+                        ? Predicate.not(ImmutableSet.copyOf(getTablesWithParameter(databaseName, SPARK_TABLE_PROVIDER_KEY, DELTA_LAKE_PROVIDER))::contains)
+                        : tableName -> true)
                 .collect(toImmutableList());
-        return tables;
     }
 
     @Override
@@ -431,7 +429,7 @@ public class FileHiveMetastore
         requireNonNull(parameterKey, "parameterKey is null");
         requireNonNull(parameterValue, "parameterValue is null");
 
-        List<String> tables = getAllTables(databaseName);
+        List<String> tables = listAllTables(databaseName);
 
         return tables.stream()
                 .map(tableName -> getTable(databaseName, tableName))
@@ -439,6 +437,21 @@ public class FileHiveMetastore
                 .map(Optional::get)
                 .filter(table -> parameterValue.equals(table.getParameters().get(parameterKey)))
                 .map(Table::getTableName)
+                .collect(toImmutableList());
+    }
+
+    private synchronized List<String> listAllTables(String databaseName)
+    {
+        requireNonNull(databaseName, "databaseName is null");
+
+        Optional<Database> database = getDatabase(databaseName);
+        if (database.isEmpty()) {
+            return ImmutableList.of();
+        }
+
+        Path databaseMetadataDirectory = getDatabaseMetadataDirectory(databaseName);
+        return getChildSchemaDirectories(databaseMetadataDirectory).stream()
+                .map(Path::getName)
                 .collect(toImmutableList());
     }
 

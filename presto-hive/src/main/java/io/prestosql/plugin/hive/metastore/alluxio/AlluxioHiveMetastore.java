@@ -54,6 +54,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static io.prestosql.plugin.hive.HiveErrorCode.HIVE_METASTORE_ERROR;
@@ -75,6 +76,7 @@ public class AlluxioHiveMetastore
     {
         this.client = requireNonNull(client);
         requireNonNull(metastoreConfig, "metastoreConfig is null");
+        checkArgument(!metastoreConfig.isHideDeltaLakeTables(), "Hiding delta tables is not supported"); // TODO
     }
 
     @Override

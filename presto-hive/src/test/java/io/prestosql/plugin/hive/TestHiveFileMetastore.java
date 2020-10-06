@@ -32,7 +32,8 @@ public class TestHiveFileMetastore
         File baseDir = new File(tempDir, "metastore");
         return new FileHiveMetastore(
                 HDFS_ENVIRONMENT,
-                new MetastoreConfig(),
+                new MetastoreConfig()
+                        .setHideDeltaLakeTables(true),
                 new FileHiveMetastoreConfig()
                         .setCatalogDirectory(baseDir.toURI().toString())
                         .setMetastoreUser("test"));
