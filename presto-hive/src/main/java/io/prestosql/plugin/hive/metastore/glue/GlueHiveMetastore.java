@@ -75,6 +75,7 @@ import io.prestosql.plugin.hive.metastore.Database;
 import io.prestosql.plugin.hive.metastore.HiveMetastore;
 import io.prestosql.plugin.hive.metastore.HivePrincipal;
 import io.prestosql.plugin.hive.metastore.HivePrivilegeInfo;
+import io.prestosql.plugin.hive.metastore.MetastoreConfig;
 import io.prestosql.plugin.hive.metastore.MetastoreUtil;
 import io.prestosql.plugin.hive.metastore.Partition;
 import io.prestosql.plugin.hive.metastore.PartitionWithStatistics;
@@ -166,11 +167,13 @@ public class GlueHiveMetastore
     @Inject
     public GlueHiveMetastore(
             HdfsEnvironment hdfsEnvironment,
+            MetastoreConfig metastoreConfig,
             GlueHiveMetastoreConfig glueConfig,
             GlueColumnStatisticsProvider columnStatisticsProvider,
             @ForGlueHiveMetastore Executor executor,
             @ForGlueHiveMetastore Optional<RequestHandler2> requestHandler)
     {
+        requireNonNull(metastoreConfig, "metastoreConfig is null");
         requireNonNull(glueConfig, "glueConfig is null");
         this.hdfsEnvironment = requireNonNull(hdfsEnvironment, "hdfsEnvironment is null");
         this.hdfsContext = new HdfsContext(ConnectorIdentity.ofUser(DEFAULT_METASTORE_USER));

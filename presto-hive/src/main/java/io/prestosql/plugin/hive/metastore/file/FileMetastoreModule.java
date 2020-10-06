@@ -16,6 +16,7 @@ package io.prestosql.plugin.hive.metastore.file;
 import com.google.inject.Binder;
 import com.google.inject.Module;
 import com.google.inject.Scopes;
+import io.prestosql.plugin.hive.HiveConfig;
 import io.prestosql.plugin.hive.metastore.HiveMetastore;
 import io.prestosql.plugin.hive.metastore.cache.CachingHiveMetastoreModule;
 import io.prestosql.plugin.hive.metastore.cache.ForCachingHiveMetastore;
@@ -28,6 +29,7 @@ public class FileMetastoreModule
     @Override
     public void configure(Binder binder)
     {
+        configBinder(binder).bindConfig(HiveConfig.class);
         configBinder(binder).bindConfig(FileHiveMetastoreConfig.class);
         binder.bind(HiveMetastore.class).annotatedWith(ForCachingHiveMetastore.class).to(FileHiveMetastore.class).in(Scopes.SINGLETON);
         binder.install(new CachingHiveMetastoreModule());

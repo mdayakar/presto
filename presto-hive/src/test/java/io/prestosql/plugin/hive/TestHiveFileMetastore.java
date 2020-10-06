@@ -14,6 +14,7 @@
 package io.prestosql.plugin.hive;
 
 import io.prestosql.plugin.hive.metastore.HiveMetastore;
+import io.prestosql.plugin.hive.metastore.MetastoreConfig;
 import io.prestosql.plugin.hive.metastore.file.FileHiveMetastore;
 import io.prestosql.plugin.hive.metastore.file.FileHiveMetastoreConfig;
 import org.testng.SkipException;
@@ -31,6 +32,7 @@ public class TestHiveFileMetastore
         File baseDir = new File(tempDir, "metastore");
         return new FileHiveMetastore(
                 HDFS_ENVIRONMENT,
+                new MetastoreConfig(),
                 new FileHiveMetastoreConfig()
                         .setCatalogDirectory(baseDir.toURI().toString())
                         .setMetastoreUser("test"));

@@ -32,6 +32,7 @@ import io.prestosql.plugin.hive.metastore.HiveColumnStatistics;
 import io.prestosql.plugin.hive.metastore.HiveMetastore;
 import io.prestosql.plugin.hive.metastore.HivePrincipal;
 import io.prestosql.plugin.hive.metastore.HivePrivilegeInfo;
+import io.prestosql.plugin.hive.metastore.MetastoreConfig;
 import io.prestosql.plugin.hive.metastore.Partition;
 import io.prestosql.plugin.hive.metastore.PartitionWithStatistics;
 import io.prestosql.plugin.hive.metastore.PrincipalPrivileges;
@@ -70,9 +71,10 @@ public class AlluxioHiveMetastore
     private final TableMasterClient client;
 
     @Inject
-    public AlluxioHiveMetastore(TableMasterClient client)
+    public AlluxioHiveMetastore(TableMasterClient client, MetastoreConfig metastoreConfig)
     {
         this.client = requireNonNull(client);
+        requireNonNull(metastoreConfig, "metastoreConfig is null");
     }
 
     @Override
